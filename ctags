@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -e
+set -u
+
+CHIBIOS=./ChibiOS
+
+ctags -R include src conf
+ctags --append -R "$CHIBIOS/os/hal/ports/STM32/STM32L4xx"
+ctags --append -R "$CHIBIOS/os/hal/ports/STM32/LLD"
+ctags --append -R "$CHIBIOS/os/hal/ports/common"
+ctags --append -R "$CHIBIOS/os/hal/include"
+ctags --append -R "$CHIBIOS/os/hal/lib"
+ctags --append -R "$CHIBIOS/os/hal/osal"
+ctags --append -R "$CHIBIOS/os/hal/src"
+ctags --append -R "$CHIBIOS/os/hal/boards/ST_NUCLEO32_L432KC"
+ctags --append -R "$CHIBIOS/os/common"
+ctags --append    "$CHIBIOS/os/common/ext/ST/STM32L4xx/stm32l432xx.h"
+ctags --append -R "$CHIBIOS/os/rt"
+ctags --append -R "$CHIBIOS/os/various"
