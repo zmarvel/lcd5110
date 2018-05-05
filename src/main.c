@@ -16,12 +16,12 @@
 
 #include "ch.h"
 #include "hal.h"
+#include "pins.h"
 #include "LCD5110.h"
 
 
 SPIConfig spicfg = {
   .end_cb = NULL,
-  //.ssline = LINE_ARD_D10,
   .ssport = GPIOA,
   .sspad = GPIOA_ARD_D10,
   .cr1 = SPI_CR1_BR_Msk,
@@ -54,57 +54,43 @@ static THD_FUNCTION(Thread1, arg) {
  * DC:  D2
  * RST: D4
  */
-const LCD5110Config lcdConfig = {
-  .dcLine = LINE_ARD_D2,
-  .rstLine = LINE_ARD_D4,
-  .csLine = LINE_ARD_D10,
-  .sckLine = LINE_ARD_A1,
-  .mosiLine = LINE_ARD_D11,
-  .misoLine = LINE_ARD_D12,
-};
-
-void lcdInit(LCD5110Driver *lcd, LCD5110Config *lcdConfig) {
-  lcd->spid = &SPID1;
-  lcd->config = lcdConfig;
-
+void lcdInit(void) {
   /* SPI setup */
-  palSetLine(lcdConfig->csLine);
-  palSetLineMode(lcdConfig->csLine, PAL_MODE_OUTPUT_PUSHPULL);
-  palSetLineMode(lcdConfig->sckLine, PAL_MODE_ALTERNATE(5));
-  palSetLineMode(lcdConfig->mosiLine, PAL_MODE_ALTERNATE(5));
-  palSetLineMode(lcdConfig->misoLine, PAL_MODE_ALTERNATE(5));
+  palSetLine(LCD5110_LINE_CS);
+  palSetLineMode(LCD5110_LINE_CS, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetLineMode(LCD5110_LINE_SCK, PAL_MODE_ALTERNATE(5));
+  palSetLineMode(LCD5110_LINE_MOSI, PAL_MODE_ALTERNATE(5));
+  palSetLineMode(LCD5110_LINE_MISO, PAL_MODE_ALTERNATE(5));
 
-  spiStart(lcd->spid, &spicfg);
+  spiStart(&SPID1, &spicfg);
   chThdSleepMilliseconds(3);
 
   /* DC pin setup */
-  palSetLine(lcdConfig->dcLine);
-  palSetLineMode(lcdConfig->dcLine, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetLine(LCD5110_LINE_DC);
+  palSetLineMode(LCD5110_LINE_DC, PAL_MODE_OUTPUT_PUSHPULL);
 
   /* RST pin setup, reset LCD */
-  //palClearLine(lcdConfig->csLine);
-  palClearLine(lcdConfig->rstLine);
-  palSetLineMode(lcdConfig->rstLine, PAL_MODE_OUTPUT_PUSHPULL);
+  palClearLine(LCD5110_LINE_RST);
+  palSetLineMode(LCD5110_LINE_RST, PAL_MODE_OUTPUT_PUSHPULL);
   chThdSleepMilliseconds(3);
-  palSetLine(lcdConfig->rstLine);
-  //palSetLine(lcdConfig->csLine);
+  palSetLine(LCD5110_LINE_RST);
 
-  LCD5110_setFunction(lcd, LCD5110_POWER_MODE_ACTIVE, LCD5110_ADDR_HORIZ,
+  LCD5110_setFunction(LCD5110_POWER_MODE_ACTIVE, LCD5110_ADDR_HORIZ,
                       LCD5110_FUNC_MODE_EXT);
-  LCD5110_setVOP(lcd, 16);
-  LCD5110_setFunction(lcd, LCD5110_POWER_MODE_ACTIVE, LCD5110_ADDR_HORIZ,
+  LCD5110_setVOP(16);
+  LCD5110_setFunction(LCD5110_POWER_MODE_ACTIVE, LCD5110_ADDR_HORIZ,
                       LCD5110_FUNC_MODE_BASIC);
-  LCD5110_setDisplayMode(lcd, LCD5110_DISPLAY_NORMAL);
-  LCD5110_setAddressMode(lcd, LCD5110_DISPLAY_NORMAL);
+  LCD5110_setDisplayMode(LCD5110_DISPLAY_NORMAL);
+  LCD5110_setAddressMode(LCD5110_DISPLAY_NORMAL);
 
-  LCD5110_setRow(lcd, 0);
-  LCD5110_setColumn(lcd, 0);
+  LCD5110_setRow(0);
+  LCD5110_setColumn(0);
   
   uint8_t buf[] = {
     0x1f, 0x05, 0x07, 0x00, 0x1f, 0x04, 0x1f, 0x00
   };
   for (int i = 0; i < 8; i++)
-    LCD5110_sendData(lcd, 8, buf);
+    LCD5110_sendData(8, buf);
 }
 
 
@@ -133,8 +119,7 @@ int main(void) {
    */
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
 
-  LCD5110Driver lcd;
-  lcdInit(&lcd, &lcdConfig);
+  lcdInit();
 
   /*
    * Normal main() thread activity, in this demo it does nothing except

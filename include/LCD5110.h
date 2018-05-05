@@ -62,27 +62,12 @@ typedef enum {
   LCD5110_DISPLAY_MODE_INVERSE = 0x05,
 } LCD5110DisplayMode;
 
-typedef struct {
-  uint32_t dcLine;
-  uint32_t rstLine;
-  uint32_t csLine;
-  uint32_t sckLine;
-  uint32_t mosiLine;
-  uint32_t misoLine;
-} LCD5110Config;
-
-typedef struct {
-  SPIDriver *spid;
-  LCD5110Config *config;
-} LCD5110Driver;
-
-
-void LCD5110_sendCommand(LCD5110Driver *dev, uint8_t cmd);
-void LCD5110_sendData(LCD5110Driver *dev, size_t n, uint8_t *data);
-void LCD5110_setFunction(LCD5110Driver *dev, LCD5110PowerMode pd,
+void LCD5110_sendCommand(uint8_t cmd);
+void LCD5110_sendData(size_t n, uint8_t *data);
+void LCD5110_setFunction(LCD5110PowerMode pd,
                          LCD5110AddressMode v, LCD5110InstrMode h);
-void LCD5110_setVOP(LCD5110Driver *dev, uint32_t vop);
-void LCD5110_setDisplayMode(LCD5110Driver *dev, LCD5110DisplayMode mode);
-void LCD5110_setAddressMode(LCD5110Driver *dev, LCD5110AddressMode mode);
-void LCD5110_setRow(LCD5110Driver *dev, uint32_t row);
-void LCD5110_setColumn(LCD5110Driver *dev, uint32_t col);
+void LCD5110_setVOP(uint32_t vop);
+void LCD5110_setDisplayMode(LCD5110DisplayMode mode);
+void LCD5110_setAddressMode(LCD5110AddressMode mode);
+void LCD5110_setRow(uint32_t row);
+void LCD5110_setColumn(uint32_t col);
