@@ -114,6 +114,7 @@ CSRC = $(STARTUPSRC) \
        $(PLATFORMSRC) \
        $(BOARDSRC) \
        src/LCD5110.c \
+       src/font32.c \
        src/main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global

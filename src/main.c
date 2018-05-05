@@ -69,6 +69,10 @@ void lcdInit(void) {
   palSetLine(LCD5110_LINE_DC);
   palSetLineMode(LCD5110_LINE_DC, PAL_MODE_OUTPUT_PUSHPULL);
 
+  /* LIGHT (backlight) pin setup) */
+  palSetLine(LCD5110_LINE_LIGHT);
+  palSetLineMode(LCD5110_LINE_LIGHT, PAL_MODE_OUTPUT_PUSHPULL);
+
   /* RST pin setup, reset LCD */
   palClearLine(LCD5110_LINE_RST);
   palSetLineMode(LCD5110_LINE_RST, PAL_MODE_OUTPUT_PUSHPULL);
@@ -85,14 +89,17 @@ void lcdInit(void) {
 
   LCD5110_setRow(0);
   LCD5110_setColumn(0);
-  
-  uint8_t buf[] = {
-    0x1f, 0x05, 0x07, 0x00, 0x1f, 0x04, 0x1f, 0x00
-  };
-  for (int i = 0; i < 8; i++)
-    LCD5110_sendData(8, buf);
 }
 
+
+uint8_t spinner[4][8] = {
+  { 0x0f, 0x0f, 0x0f, 0x0f, 0x00, 0x00, 0x00, 0x00 },
+  { 0x00, 0x00, 0x00, 0x00, 0x0f, 0x0f, 0x0f, 0x0f },
+  { 0x00, 0x00, 0x00, 0x00, 0xf0, 0xf0, 0xf0, 0xf0 },
+  { 0xf0, 0xf0, 0xf0, 0xf0, 0x00, 0x00, 0x00, 0x00 },
+};
+
+extern const uint8_t font32[128][8];
 
 /*
  * Application entry point.
@@ -120,12 +127,38 @@ int main(void) {
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
 
   lcdInit();
+  palClearLine(LCD5110_LINE_LIGHT);
+
+  Rect box = {
+    .x = 0,
+    .y = 0,
+    .width = 8,
+    .height = 8
+  };
+  Rect box2 = {
+    .x = 16,
+    .y = 16,
+    .width = 8,
+    .height = 8
+  };
+
+  LCD5110_blank();
+
+  LCD5110_draw(box2, font32[97]);
+
+  //uint8_t buf[] = {0x1f, 0x05, 0x07, 0x00, 0x1f, 0x04, 0x1f, 0x00};
+  //LCD5110_sendData(8, buf);
 
   /*
    * Normal main() thread activity, in this demo it does nothing except
    * sleeping in a loop and check the button state.
    */
+  int i = 0;
   while (true) {
     chThdSleepMilliseconds(500);
+    LCD5110_draw(box, spinner[i++]);
+    if (i > 3)
+      i = 0;
+
   }
 }
