@@ -62,6 +62,14 @@ typedef enum {
   LCD5110_DISPLAY_MODE_INVERSE = 0x05,
 } LCD5110DisplayMode;
 
+typedef struct {
+  uint8_t x;
+  uint8_t y;
+  uint8_t width;
+  uint8_t height;
+} Rect;
+
+
 void LCD5110_sendCommand(uint8_t cmd);
 void LCD5110_sendData(size_t n, uint8_t *data);
 void LCD5110_setFunction(LCD5110PowerMode pd,
@@ -71,3 +79,5 @@ void LCD5110_setDisplayMode(LCD5110DisplayMode mode);
 void LCD5110_setAddressMode(LCD5110AddressMode mode);
 void LCD5110_setRow(uint32_t row);
 void LCD5110_setColumn(uint32_t col);
+void LCD5110_draw(Rect box, uint8_t *data);
+void LCD5110_blank(void);

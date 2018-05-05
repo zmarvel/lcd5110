@@ -51,6 +51,7 @@ void LCD5110_setRow(uint32_t row) {
   if (row > 40)
     row = 40;
 
+  /* Rows are addressed by "bank", or groups of 8 vertical bytes. */
   row >>= 3;
   LCD5110_sendCommand(LCD5110_Y_ADDR | row);
 }
@@ -59,6 +60,32 @@ void LCD5110_setColumn(uint32_t col) {
   if (col > 83)
     col = 83;
   LCD5110_sendCommand(LCD5110_X_ADDR | col);
+}
+
+
+
+
+/* data should contain width*(height/8) bytes */
+
+void LCD5110_draw(Rect box, uint8_t *data) {
+  for (int i = 0, bank = box.y; bank < box.y + box.height; i += box.width, bank += 8) {
+    LCD5110_setRow(bank);
+    LCD5110_setColumn(box.x);
+
+    LCD5110_sendData(box.width, &data[i]);
+  }
+}
+
+void LCD5110_blank(void) {
+  uint8_t row[84];
+  for (int i = 0; i < 84; i++)
+    row[i] = 0;
+
+  for (int bank = 0; bank < 6; bank++) {
+    LCD5110_setRow(bank*8);
+    LCD5110_setColumn(0);
+    LCD5110_sendData(84, row);
+  }
 }
 
 
