@@ -45,6 +45,69 @@ static THD_FUNCTION(Thread1, arg) {
   }
 }
 
+/* SPID1
+ * CS:   D10/PA11
+ * MOSI: D11/PB5
+ * MISO: D12/PB4
+ * SCK:  D13/PB3
+ *       A1/PA1
+ * DC:  D2
+ * RST: D4
+ */
+const LCD5110Config lcdConfig = {
+  .dcLine = LINE_ARD_D2,
+  .rstLine = LINE_ARD_D4,
+  .csLine = LINE_ARD_D10,
+  .sckLine = LINE_ARD_A1,
+  .mosiLine = LINE_ARD_D11,
+  .misoLine = LINE_ARD_D12,
+};
+
+void lcdInit(LCD5110Driver *lcd, LCD5110Config *lcdConfig) {
+  lcd->spid = &SPID1;
+  lcd->config = lcdConfig;
+
+  /* SPI setup */
+  palSetLine(lcdConfig->csLine);
+  palSetLineMode(lcdConfig->csLine, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetLineMode(lcdConfig->sckLine, PAL_MODE_ALTERNATE(5));
+  palSetLineMode(lcdConfig->mosiLine, PAL_MODE_ALTERNATE(5));
+  palSetLineMode(lcdConfig->misoLine, PAL_MODE_ALTERNATE(5));
+
+  spiStart(lcd->spid, &spicfg);
+  chThdSleepMilliseconds(3);
+
+  /* DC pin setup */
+  palSetLine(lcdConfig->dcLine);
+  palSetLineMode(lcdConfig->dcLine, PAL_MODE_OUTPUT_PUSHPULL);
+
+  /* RST pin setup, reset LCD */
+  //palClearLine(lcdConfig->csLine);
+  palClearLine(lcdConfig->rstLine);
+  palSetLineMode(lcdConfig->rstLine, PAL_MODE_OUTPUT_PUSHPULL);
+  chThdSleepMilliseconds(3);
+  palSetLine(lcdConfig->rstLine);
+  //palSetLine(lcdConfig->csLine);
+
+  LCD5110_setFunction(lcd, LCD5110_POWER_MODE_ACTIVE, LCD5110_ADDR_HORIZ,
+                      LCD5110_FUNC_MODE_EXT);
+  LCD5110_setVOP(lcd, 16);
+  LCD5110_setFunction(lcd, LCD5110_POWER_MODE_ACTIVE, LCD5110_ADDR_HORIZ,
+                      LCD5110_FUNC_MODE_BASIC);
+  LCD5110_setDisplayMode(lcd, LCD5110_DISPLAY_NORMAL);
+  LCD5110_setAddressMode(lcd, LCD5110_DISPLAY_NORMAL);
+
+  LCD5110_setRow(lcd, 0);
+  LCD5110_setColumn(lcd, 0);
+  
+  uint8_t buf[] = {
+    0x1f, 0x05, 0x07, 0x00, 0x1f, 0x04, 0x1f, 0x00
+  };
+  for (int i = 0; i < 8; i++)
+    LCD5110_sendData(lcd, 8, buf);
+}
+
+
 /*
  * Application entry point.
  */
@@ -70,47 +133,8 @@ int main(void) {
    */
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
 
-
-  /* SPID1
-   * CS:   D10/PA11
-   * MOSI: D11/PB5
-   * MISO: D12/PB4
-   * SCK:  D13/PB3
-   *       A1/PA1
-   */
-  palSetLine(LINE_ARD_D10);
-  palSetLineMode(LINE_ARD_D10, PAL_MODE_OUTPUT_PUSHPULL);
-  palSetLineMode(LINE_ARD_A1, PAL_MODE_ALTERNATE(5));
-  palSetLineMode(LINE_ARD_D11, PAL_MODE_ALTERNATE(5));
-  palSetLineMode(LINE_ARD_D12, PAL_MODE_ALTERNATE(5));
-
-  spiStart(&SPID1, &spicfg);
-  chThdSleepMilliseconds(3);
-
-  /* DC:  D2
-   * RST: D4
-   */
-  palSetLine(LINE_ARD_D2);
-  palSetLineMode(LINE_ARD_D2, PAL_MODE_OUTPUT_PUSHPULL);
-  palSetLine(LINE_ARD_D4);
-  palSetLineMode(LINE_ARD_D4, PAL_MODE_OUTPUT_PUSHPULL);
-
-  LCD5110 lcd = {
-    .spid = &SPID1,
-    .dcLine = LINE_ARD_D2,
-    .rstLine = LINE_ARD_D4
-  };
-
-
-  LCD5110_sendCommand(&lcd, LCD5110_FUNC_SET |
-                      LCD5110_FUNC_ACTIVE |
-                      LCD5110_FUNC_ADDR_H |
-                      LCD5110_FUNC_MODE_EXT);
-  LCD5110_sendCommand(&lcd, 0x90);
-  LCD5110_sendCommand(&lcd, 0x20);
-  LCD5110_sendCommand(&lcd, 0x0c);
-  uint8_t buf = 0x1f;
-  LCD5110_sendData(&lcd, 1, &buf);
+  LCD5110Driver lcd;
+  lcdInit(&lcd, &lcdConfig);
 
   /*
    * Normal main() thread activity, in this demo it does nothing except

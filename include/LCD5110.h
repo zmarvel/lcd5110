@@ -8,15 +8,26 @@
 #define LCD5110_FUNC_PD_MASK (1 << 2)
 #define LCD5110_FUNC_ACTIVE 0
 #define LCD5110_FUNC_POWERDOWN (1 << 2)
+typedef enum {
+  LCD5110_POWER_MODE_ACTIVE = LCD5110_FUNC_ACTIVE,
+  LCD5110_POWER_MODE_POWERDOWN = LCD5110_FUNC_POWERDOWN,
+} LCD5110PowerMode;
 /* 0=horizontal, 1=vertical addressing */
 #define LCD5110_FUNC_ADDR_MASK (1 << 1)
 #define LCD5110_FUNC_ADDR_H 0
 #define LCD5110_FUNC_ADDR_V (1 << 1)
+typedef enum {
+  LCD5110_ADDR_HORIZ = LCD5110_FUNC_ADDR_H,
+  LCD5110_ADDR_VERT = LCD5110_FUNC_ADDR_V,
+} LCD5110AddressMode;
 /* 0=basic mode, 1=extended mode */
 #define LCD5110_FUNC_MODE (1 << 0)
 #define LCD5110_FUNC_MODE_BASIC 0
 #define LCD5110_FUNC_MODE_EXT (1 << 0)
-
+typedef enum {
+  LCD5110_INSTR_MODE_BASIC = LCD5110_FUNC_MODE_BASIC,
+  LCD5110_INSTR_MODE_EXT = LCD5110_FUNC_MODE_EXT,
+} LCD5110InstrMode;
 
 /* Basic mode commands */
 
@@ -44,14 +55,34 @@
 #define LCD5110_VOP_MASK 0x7f
 
 
+typedef enum {
+  LCD5110_DISPLAY_MODE_BLANK = 0x00,
+  LCD5110_DISPLAY_MODE_NORMAL = 0x04,
+  LCD5110_DISPLAY_MODE_ALL_ON = 0x01,
+  LCD5110_DISPLAY_MODE_INVERSE = 0x05,
+} LCD5110DisplayMode;
+
 typedef struct {
-  SPIDriver *spid;
   uint32_t dcLine;
   uint32_t rstLine;
-} LCD5110;
+  uint32_t csLine;
+  uint32_t sckLine;
+  uint32_t mosiLine;
+  uint32_t misoLine;
+} LCD5110Config;
+
+typedef struct {
+  SPIDriver *spid;
+  LCD5110Config *config;
+} LCD5110Driver;
 
 
-
-
-void LCD5110_sendCommand(LCD5110 *dev, uint8_t cmd);
-void LCD5110_sendData(LCD5110 *dev, size_t n, uint8_t *data);
+void LCD5110_sendCommand(LCD5110Driver *dev, uint8_t cmd);
+void LCD5110_sendData(LCD5110Driver *dev, size_t n, uint8_t *data);
+void LCD5110_setFunction(LCD5110Driver *dev, LCD5110PowerMode pd,
+                         LCD5110AddressMode v, LCD5110InstrMode h);
+void LCD5110_setVOP(LCD5110Driver *dev, uint32_t vop);
+void LCD5110_setDisplayMode(LCD5110Driver *dev, LCD5110DisplayMode mode);
+void LCD5110_setAddressMode(LCD5110Driver *dev, LCD5110AddressMode mode);
+void LCD5110_setRow(LCD5110Driver *dev, uint32_t row);
+void LCD5110_setColumn(LCD5110Driver *dev, uint32_t col);
