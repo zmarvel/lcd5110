@@ -87,6 +87,7 @@ PROJECT = ch
 
 # Imported source files and paths
 CHIBIOS = ./ChibiOS
+BOARD = ./board
 CONFDIR = conf
 
 # Startup files.
@@ -94,12 +95,12 @@ include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/startup_stm32l4xx.m
 # HAL-OSAL files (optional).
 include $(CHIBIOS)/os/hal/hal.mk
 include $(CHIBIOS)/os/hal/ports/STM32/STM32L4xx/platform_l432.mk
-include $(CHIBIOS)/os/hal/boards/ST_NUCLEO32_L432KC/board.mk
 include $(CHIBIOS)/os/hal/osal/rt/osal.mk
 # RTOS files (optional).
 include $(CHIBIOS)/os/rt/rt.mk
 include $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC/mk/port_v7m.mk
 # Other files (optional).
+include $(BOARD)/board.mk
 
 # Define linker script file here
 LDSCRIPT= $(STARTUPLD)/STM32L432xC.ld
@@ -114,7 +115,8 @@ CSRC = $(STARTUPSRC) \
        $(PLATFORMSRC) \
        $(BOARDSRC) \
        src/LCD5110.c \
-       src/font32.c \
+       font/acorn-electron-8x8.c \
+       font/atari-small.c \
        src/main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
@@ -220,4 +222,21 @@ ULIBS =
 RULESPATH = $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC
 include $(RULESPATH)/rules.mk
 ELF = $(BUILDDIR)/$(PROJECT).elf
+
+font/acorn-electron-8x8.c: font/acorn.py
+	python3 $< font/acorn-electron-8x8.bin $@
+
+font/atari-small.c: font/atari-small.py
+	python3 $< font/atari-small.bdf $@
+
+CLEAN_RULE_HOOK:
+	rm -f font/acorn-electron-8x8.c font/atari-small.c
+
+$(BOARD)/board.mk: $(BOARD)/cfg/board.fmpp $(BOARD)/cfg/board.chcfg
+	fmpp -q -C $<
+
+$(BOARD)/board.c: $(BOARD)/board.mk
+
+$(BOARD)/board.h: $(BOARD)/board.mk
+
 include chcommon.mk
