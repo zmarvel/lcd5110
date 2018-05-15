@@ -14,6 +14,7 @@
     limitations under the License.
 */
 
+#include <string.h>
 #include "ch.h"
 #include "hal.h"
 #include "pins.h"
@@ -23,8 +24,8 @@
 SPIConfig spicfg = {
   .end_cb = NULL,
   .ssport = GPIOA,
-  .sspad = GPIOA_ARD_D10,
-  .cr1 = SPI_CR1_BR_Msk,
+  .sspad = GPIOA_LCD5110_CS,
+  .cr1 = SPI_CR1_BR_1,
   .cr2 = 0,
 };
 
@@ -45,6 +46,24 @@ static THD_FUNCTION(Thread1, arg) {
   }
 }
 
+bool lcdInitialized = false;
+static THD_WORKING_AREA(waThread2, 128);
+static THD_FUNCTION(Thread2, arg) {
+
+  (void)arg;
+  chRegSetThreadName("backlight");
+  while (true) {
+    if (lcdInitialized) {
+      palClearLine(LINE_LCD5110_LIGHT);
+      chThdSleepMilliseconds(1);
+      palSetLine(LINE_LCD5110_LIGHT);
+      chThdSleepMilliseconds(2);
+    } else {
+      chThdSleepMilliseconds(200);
+    }
+  }
+}
+
 /* SPID1
  * CS:   D10/PA11
  * MOSI: D11/PB5
@@ -55,41 +74,81 @@ static THD_FUNCTION(Thread1, arg) {
  * RST: D4
  */
 void lcdInit(void) {
-  /* SPI setup */
-  palSetLine(LCD5110_LINE_CS);
-  palSetLineMode(LCD5110_LINE_CS, PAL_MODE_OUTPUT_PUSHPULL);
-  palSetLineMode(LCD5110_LINE_SCK, PAL_MODE_ALTERNATE(5));
-  palSetLineMode(LCD5110_LINE_MOSI, PAL_MODE_ALTERNATE(5));
-  palSetLineMode(LCD5110_LINE_MISO, PAL_MODE_ALTERNATE(5));
+  /* Pin setup done in board.h */
 
+  /* Reset LCD */
+  palSetLine(LINE_LCD5110_RST);
+
+  spiStop(&SPID1);
+  chThdSleepMilliseconds(1);
   spiStart(&SPID1, &spicfg);
   chThdSleepMilliseconds(3);
 
-  /* DC pin setup */
-  palSetLine(LCD5110_LINE_DC);
-  palSetLineMode(LCD5110_LINE_DC, PAL_MODE_OUTPUT_PUSHPULL);
-
-  /* LIGHT (backlight) pin setup) */
-  palSetLine(LCD5110_LINE_LIGHT);
-  palSetLineMode(LCD5110_LINE_LIGHT, PAL_MODE_OUTPUT_PUSHPULL);
-
-  /* RST pin setup, reset LCD */
-  palClearLine(LCD5110_LINE_RST);
-  palSetLineMode(LCD5110_LINE_RST, PAL_MODE_OUTPUT_PUSHPULL);
-  chThdSleepMilliseconds(3);
-  palSetLine(LCD5110_LINE_RST);
+  //LCD5110_sendCommand(0x21);
+  //LCD5110_sendCommand(0x90);
+  //LCD5110_sendCommand(0x20);
+  //LCD5110_sendCommand(0x0c);
 
   LCD5110_setFunction(LCD5110_POWER_MODE_ACTIVE, LCD5110_ADDR_HORIZ,
-                      LCD5110_FUNC_MODE_EXT);
+                      LCD5110_INSTR_MODE_EXT);
   LCD5110_setVOP(16);
+  LCD5110_sendCommand(LCD5110_TEMP | 0x03);
+  LCD5110_sendCommand(LCD5110_BIAS | 0);
   LCD5110_setFunction(LCD5110_POWER_MODE_ACTIVE, LCD5110_ADDR_HORIZ,
-                      LCD5110_FUNC_MODE_BASIC);
-  LCD5110_setDisplayMode(LCD5110_DISPLAY_NORMAL);
-  LCD5110_setAddressMode(LCD5110_DISPLAY_NORMAL);
+                      LCD5110_INSTR_MODE_BASIC);
+  LCD5110_setDisplayMode(LCD5110_DISPLAY_MODE_NORMAL);
 
-  LCD5110_setRow(0);
-  LCD5110_setColumn(0);
+  //LCD5110_setRow(0);
+  //LCD5110_setColumn(0);
 }
+
+#define MAX(a, b) (((a) < (b)) ? (b) : (a))
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+
+extern const uint8_t font8x8[96][8];
+extern const uint8_t font4x8[128][4];
+//uint8_t stringBuf[64][8];
+//void lcdDrawString(uint8_t x, uint8_t y, char *s) {
+//  //uint8_t idx;
+//  size_t n = strnlen(s, LCD5110_WIDTH*LCD5110_HEIGHT/(8*8));
+//  int row = 0;
+//  int width = LCD5110_WIDTH-x-1;
+//  size_t maxlinelen = width / 8;
+//  for (size_t i = 0; i < n; i += maxlinelen) {
+//    int linelen = MIN(maxlinelen, n-i);
+//    //idx = font8x8_lut[(uint8_t)s[i]];
+//    for (int j = i; j < linelen*8; j++)
+//      memcpy(stringBuf[j], font8x8[(uint8_t)s[j]-32], 8);
+//
+//
+//    LCD5110_setRow(y+8*row);
+//    LCD5110_setColumn(x);
+//    LCD5110_sendData(linelen*8, stringBuf[i]);
+//    row++;
+//  }
+//}
+
+uint8_t stringBuf[64][4];
+void lcdDrawString(uint8_t x, uint8_t y, char *s) {
+  //uint8_t idx;
+  size_t n = strnlen(s, LCD5110_WIDTH*LCD5110_HEIGHT/(4*8));
+  int row = 0;
+  int width = LCD5110_WIDTH-x;
+  size_t maxlinelen = width / 4;
+  for (size_t i = 0; i < n; i += maxlinelen) {
+    int linelen = MIN(maxlinelen, n-i);
+    //idx = font8x8_lut[(uint8_t)s[i]];
+    for (int j = i; j < linelen*4; j++)
+      memcpy(stringBuf[j], font4x8[(uint8_t)s[j]], 4);
+
+
+    LCD5110_setRow(y+4*row);
+    LCD5110_setColumn(x);
+    LCD5110_sendData(linelen*4, stringBuf[i]);
+    row++;
+  }
+}
+
 
 
 uint8_t spinner[4][8] = {
@@ -99,7 +158,6 @@ uint8_t spinner[4][8] = {
   { 0xf0, 0xf0, 0xf0, 0xf0, 0x00, 0x00, 0x00, 0x00 },
 };
 
-extern const uint8_t font32[128][8];
 
 /*
  * Application entry point.
@@ -125,9 +183,10 @@ int main(void) {
    * Creates the blinker thread.
    */
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
+  chThdCreateStatic(waThread2, sizeof(waThread2), NORMALPRIO, Thread2, NULL);
 
   lcdInit();
-  palClearLine(LCD5110_LINE_LIGHT);
+  lcdInitialized = true;
 
   Rect box = {
     .x = 0,
@@ -144,10 +203,7 @@ int main(void) {
 
   LCD5110_blank();
 
-  LCD5110_draw(box2, font32[97]);
-
-  //uint8_t buf[] = {0x1f, 0x05, 0x07, 0x00, 0x1f, 0x04, 0x1f, 0x00};
-  //LCD5110_sendData(8, buf);
+  lcdDrawString(0, 16, "Hello world");
 
   /*
    * Normal main() thread activity, in this demo it does nothing except
